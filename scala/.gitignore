@@ -1,0 +1,6 @@
+.bsp/
+.metals/
+.project
+.scala-build/
+.vscode/
+inputs/
