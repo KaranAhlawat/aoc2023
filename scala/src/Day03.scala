@@ -18,77 +18,53 @@ val test = """
 .664.598..
 """.stripMargin
 
-sealed trait Tile:
-  val pos: Int
-  val row: Int
-
-case class PartNum(n: Int, pos: Int, end: Int, row: Int) extends Tile
-case class Symbol(c: Char, pos: Int, row: Int) extends Tile
-case class Empty(pos: Int, row: Int) extends Tile
+case class Tile(n: String, start: Int, stop: Int, row: Int)
 
 def buildGrid(input: Stream[IO, String]) =
   input.zipWithIndex
     .map((line, idx) =>
-      val numRegex = "(\\d+)".r
-      val symRegex = "([^.\\d])".r
-
-      val nums = numRegex
+      "(\\d+)|([^.\\d])".r
         .findAllMatchIn(line)
-        .map(n => PartNum(n.matched.toInt, n.start, n.end - 1, idx.toInt))
-
-      val syms = symRegex
-        .findAllMatchIn(line)
-        .map(n => Symbol(n.matched(0), n.start, idx.toInt))
-
-      (nums ++ syms).toList
+        .map(n => Tile(n.matched, n.start, n.end - 1, idx.toInt))
+        .toList
     )
     .foldMonoid
     .flatMap(x => Stream.emits(x))
 
-def checkAdjacency(sym: Symbol, num: PartNum): Boolean =
-  val firstCond = sym.pos == num.pos - 1 ||
-  sym.pos == num.end + 1 ||
-  (sym.pos >= num.pos - 1 && sym.pos <= num.end + 1)
-  
+def checkAdjacency(sym: Tile, num: Tile): Boolean =
+  val firstCond = sym.start == num.start - 1 ||
+    sym.start == num.stop + 1 ||
+    (sym.start >= num.start - 1 && sym.start <= num.stop + 1)
+
   val secondCond = sym.row >= num.row - 1 && sym.row <= num.row + 1
-  
+
   firstCond && secondCond
 
-def tileIsValid(tile: PartNum, syms: Vector[Symbol]) =
+def tileIsValid(tile: Tile, syms: Vector[Tile]) =
   syms
-    .filter(s => checkAdjacency(s, tile) )
+    .filter(s => checkAdjacency(s, tile))
     .nonEmpty
 
-def getGearRatio(s: Symbol, numberTiles: Vector[PartNum]) =
+def getGearRatio(s: Tile, numberTiles: Vector[Tile]) =
   val ratioTiles = numberTiles
-    .filter(tile => checkAdjacency(s, tile) )
+    .filter(tile => checkAdjacency(s, tile))
 
-  if (ratioTiles.size == 2) then ratioTiles.map(_.n).product else 0
+  if (ratioTiles.size == 2) then ratioTiles.map(_.n.toInt).product else 0
 
-def part1(grid: IO[Vector[Tile]]) =
+def part1(grid: IO[(Vector[Tile], Vector[Tile])]) =
   grid
-    .map(tiles =>
-      val numberTiles =
-        tiles.filter(_.isInstanceOf[PartNum]).asInstanceOf[Vector[PartNum]]
-      val symTiles =
-        tiles.filter(_.isInstanceOf[Symbol]).asInstanceOf[Vector[Symbol]]
-
-      numberTiles
-        .map(tile => if tileIsValid(tile, symTiles) then tile.n else 0)
+    .map((symTiles, numTiles) =>
+      numTiles
+        .map(tile => if tileIsValid(tile, symTiles) then tile.n.toInt else 0)
         .sum
     )
 
-def part2(grid: IO[Vector[Tile]]) =
+def part2(grid: IO[(Vector[Tile], Vector[Tile])]) =
   grid
-    .map(tiles =>
-      val numberTiles =
-        tiles.filter(_.isInstanceOf[PartNum]).asInstanceOf[Vector[PartNum]]
-      val symTiles =
-        tiles.filter(_.isInstanceOf[Symbol]).asInstanceOf[Vector[Symbol]]
-
+    .map((symTiles, numTiles) =>
       symTiles
-        .filter(_.c == '*')
-        .map(tile => getGearRatio(tile, numberTiles))
+        .filter(_.n == "*")
+        .map(tile => getGearRatio(tile, numTiles))
         .sum
     )
 
@@ -96,10 +72,12 @@ object Day03 extends IOApp.Simple:
   override def run: IO[Unit] =
     val input = readInput("Day03")
     val testStream = Stream.emits(test.split('\n'))
-    val grid = buildGrid(input).compile.toVector
-
-    part1(grid).flatMap(one =>
-      part2(grid).flatMap(two =>
-        IO.println(one, two)
-      )
+    val grid = buildGrid(input).compile.toVector.map(tiles =>
+      val symTiles =
+        tiles.filter(t => t.n.length() == 1 && !t.n(0).isDigit)
+      val numTiles =
+        tiles.filterNot(t => t.n.length() == 1 && !t.n(0).isDigit)
+      (symTiles, numTiles)
     )
+
+    part1(grid).flatMap(one => part2(grid).flatMap(two => IO.println(one, two)))
