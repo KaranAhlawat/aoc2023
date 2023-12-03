@@ -1,9 +1,7 @@
-import cats.effect.IOApp
-import cats.effect.IO
-import cats.implicits.*
+import cats.effect.{IO, IOApp}
+import cats.syntax.all.*
 import fs2.Stream
 import utils.readInput
-import cats.syntax.all.*
 
 val test = """
 467..114..
