@@ -1,8 +1,8 @@
 .gradle
 build/
+**/src/main/**/inputs/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
-!**/src/main/**/inputs/
 !**/src/test/**/build/
 
 ### IntelliJ IDEA ###
