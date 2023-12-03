@@ -35,14 +35,12 @@ def buildGrid(input: Stream[IO, String]) =
       val nums = numRegex
         .findAllMatchIn(line)
         .map(n => PartNum(n.matched.toInt, n.start, n.end - 1, idx.toInt))
-        .toList
-        .sortBy(_.pos)
 
       val syms = symRegex
         .findAllMatchIn(line)
         .map(n => Symbol(n.matched(0), n.start, idx.toInt))
 
-      (nums ++ syms).sortBy(_.pos)
+      (nums ++ syms).toList
     )
     .foldMonoid
     .flatMap(x => Stream.emits(x))
